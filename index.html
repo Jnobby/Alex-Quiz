@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Ultimate Focus Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .screen {
+            text-align: center;
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        #instruction-text {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 25px;
+            color: #00ffcc;
+            min-height: 40px;
+        }
+
+        .score {
+            font-size: 1.1rem;
+            color: #888;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Choice Grid */
+        .choice-container {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .choice-box {
+            width: 180px;
+            height: 180px;
+            background-color: #2a2a2a;
+            border: 4px solid #333;
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3.5rem;
+            font-weight: bold;
+            transition: transform 0.15s ease, border-color 0.15s ease;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .choice-box:hover {
+            transform: scale(1.05);
+            border-color: #555;
+        }
+
+        .choice-box:active {
+            transform: scale(0.98);
+        }
+
+        /* Lose Screen Style */
+        .lose-text {
+            font-size: 4.5rem;
+            color: #ff3333;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
+        
+        .lose-sub {
+            color: #888;
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+
+        .restart-btn {
+            background-color: #ff3333;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 30px;
+            text-transform: uppercase;
+            transition: background 0.2s;
+        }
+
+        .restart-btn:hover {
+            background-color: #cc2222;
+        }
+
+        /* Jump Scare Overlay */
+        #jumpscare-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: black;
+            z-index: 9999;
+            display: none;
+        }
+
+        #jumpscare-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-screen" class="screen active">
+        <h1>Round <span id="round-count">1</span></h1>
+        <div class="score">Streak: <span id="score-count">0</span> / 10</div>
+        <div id="instruction-text">Loading task...</div>
+        
+        <div class="choice-container">
+            <div id="box-left" class="choice-box" onclick="checkAnswer(0)"></div>
+            <div id="box-right" class="choice-box" onclick="checkAnswer(1)"></div>
+        </div>
+    </div>
+
+    <div id="lose-screen" class="screen">
+        <div class="lose-text">ha, you suck</div>
+        <div class="lose-sub">Imagine failing a basic focus test.</div>
+        <button class="restart-btn" onclick="resetGame()">Try Again</button>
+    </div>
+
+    <div id="jumpscare-screen">
+        <audio id="scream-audio" src="https://actions.google.com/sounds/v1/horror/male_scream_reverb.ogg" preload="auto"></audio>
+        <img id="jumpscare-image" src="https://images.unsplash.com/photo-1570473541596-26889e1db0fe?q=80&w=1200" alt="SCARE">
+    </div>
+
+    <script>
+        let currentStreak = 0;
+        let correctAnswerIndex = 0;
+
+        const challenges = [
+            { text: "Pick the blue object", target: { bg: "#0077ff", txt: "" }, decoy: { bg: "#ff9900", txt: "" } },
+            { text: "Pick the green object", target: { bg: "#00cc66", txt: "" }, decoy: { bg: "#cc0066", txt: "" } },
+            { text: "Pick the square with a circle", target: { bg: "#333", txt: "◯" }, decoy: { bg: "#333", txt: "△" } },
+            { text: "Pick the higher number", target: { bg: "#444", txt: "87" }, decoy: { bg: "#444", txt: "32" } },
+            { text: "Pick the lowercase letter", target: { bg: "#444", txt: "b" }, decoy: { bg: "#444", txt: "B" } },
+            { text: "Pick the yellow object", target: { bg: "#ffcc00", txt: "" }, decoy: { bg: "#7700aa", txt: "" } },
+            { text: "Pick the happy face", target: { bg: "#333", txt: "🙂" }, decoy: { bg: "#333", txt: "🙁" } },
+            { text: "Pick the box containing an 'X'", target: { bg: "#333", txt: "X" }, decoy: { bg: "#333", txt: "O" } },
+            { text: "Pick the brighter color", target: { bg: "#ffffff", txt: "" }, decoy: { bg: "#555555", txt: "" } },
+            { text: "Pick the even number", target: { bg: "#444", txt: "14" }, decoy: { bg: "#444", txt: "19" } }
+        ];
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function generateQuestion() {
+            if (currentStreak >= 10) {
+                triggerJumpscare();
+                return;
+            }
+
+            document.getElementById('score-count').innerText = currentStreak;
+            document.getElementById('round-count').innerText = currentStreak + 1;
+
+            const currentChallenge = challenges[currentStreak];
+            document.getElementById('instruction-text').innerText = currentChallenge.text;
+
+            const leftBox = document.getElementById('box-left');
+            const rightBox = document.getElementById('box-right');
+
+            correctAnswerIndex = Math.floor(Math.random() * 2);
+
+            if (correctAnswerIndex === 0) {
+                applyStyle(leftBox, currentChallenge.target);
+                applyStyle(rightBox, currentChallenge.decoy);
+            } else {
+                applyStyle(leftBox, currentChallenge.decoy);
+                applyStyle(rightBox, currentChallenge.target);
+            }
+        }
+
+        function applyStyle(element, styleData) {
+            element.style.backgroundColor = styleData.bg;
+            element.innerText = styleData.txt;
+            element.style.borderColor = styleData.txt === "" ? "transparent" : "#333";
+        }
+
+        function checkAnswer(selectedIndex) {
+            if (selectedIndex === correctAnswerIndex) {
+                currentStreak++;
+                generateQuestion();
+            } else {
+                showScreen('lose-screen');
+            }
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function triggerJumpscare() {
+            const scareScreen = document.getElementById('jumpscare-screen');
+            const audio = document.getElementById('scream-audio');
+            
+            scareScreen.style.display = 'block';
+            
+            audio.play().catch(e => console.log("Audio failed to play.", e));
+
+            setTimeout(() => {
+                scareScreen.style.display = 'none';
+                resetGame();
+            }, 3500);
+        }
+
+        function resetGame() {
+            currentStreak = 0;
+            shuffleArray(challenges);
+            showScreen('game-screen');
+            generateQuestion();
+        }
+
+        shuffleArray(challenges);
+        generateQuestion();
+    </script>
+</body>
+</html>
